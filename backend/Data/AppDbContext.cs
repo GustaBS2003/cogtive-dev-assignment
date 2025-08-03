@@ -19,10 +19,23 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ProductionData>()
             .HasIndex(p => p.MachineId);
 
-        // Configure relationship
         modelBuilder.Entity<ProductionData>()
             .HasOne<Machine>()
             .WithMany()
             .HasForeignKey(p => p.MachineId);
+    
+        // PostgreSQL specific configurations
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            // Use proper PostgreSQL types
+            modelBuilder.Entity<ProductionData>()
+                .Property(p => p.Efficiency)
+                .HasColumnType("decimal(5,2)");
+            
+            // PostgreSQL case-sensitive collation if needed
+            modelBuilder.Entity<Machine>()
+                .Property(m => m.Name)
+                .UseCollation("und-x-icu");
+        }
     }
 }

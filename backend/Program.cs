@@ -38,7 +38,7 @@ else
 
 var app = builder.Build();
 
-// Ensure database is created and seed initial data
+// Database initialization
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -46,7 +46,8 @@ using (var scope = app.Services.CreateScope())
 
     try 
     {
-        // Fix: Check if database exists but tables don't
+        logger.LogInformation($"Using database provider: {dbProvider}");
+        
         if (context.Database.CanConnect())
         {
             try
@@ -69,27 +70,25 @@ using (var scope = app.Services.CreateScope())
         {
             // Database doesn't exist, create it
             logger.LogInformation("Creating new database with initial schema...");
-            context.Database.EnsureCreated();
+            
+            // For PostgreSQL, it's better to use migrations
+            if (dbProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Database.Migrate();
+            }
+            else
+            {
+                context.Database.EnsureCreated();
+            }
+            
             InitSeedData(context);
             logger.LogInformation("New database created with seed data.");
         }
     }
     catch (Exception ex)
     {
-        // Handle any unexpected errors
-        logger.LogError(ex, "Database initialization failed. Recreating from scratch.");
-        try
-        {
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
-            InitSeedData(context);
-            logger.LogInformation("Database recovery successful.");
-        }
-        catch (Exception innerEx)
-        {
-            logger.LogCritical(innerEx, "Critical error: Could not recover database.");
-            throw; // Rethrow as this is a critical error
-        }
+        logger.LogError(ex, "Database initialization failed.");
+        throw;
     }
 }
 
