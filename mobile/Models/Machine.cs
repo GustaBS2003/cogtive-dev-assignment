@@ -17,7 +17,7 @@ namespace CogtiveDevAssignment.Models
         public int MachineId { get; set; }
         public DateTime Timestamp { get; set; }
         // Intentional error: Efficiency should be a decimal/double, not string
-        public string Efficiency { get; set; }
+        public decimal Efficiency { get; set; }
         public int UnitsProduced { get; set; }
         public int Downtime { get; set; } // In minutes
     }

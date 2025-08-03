@@ -185,21 +185,21 @@ void InitSeedData(AppDbContext context)
         new ProductionData { 
             MachineId = 1, 
             Timestamp = now.AddHours(-4), 
-            Efficiency = "92.7", // Intentional error: string instead of decimal
+            Efficiency = 92.7m, // Intentional error: string instead of decimal
             UnitsProduced = 427, 
             Downtime = 24 
         },
         new ProductionData { 
             MachineId = 2, 
             Timestamp = now.AddHours(-3), 
-            Efficiency = "88.3", 
+            Efficiency = 88.3m, 
             UnitsProduced = 195, 
             Downtime = 32 
         },
         new ProductionData { 
             MachineId = 1, 
             Timestamp = now.AddHours(-2), 
-            Efficiency = "95.1", 
+            Efficiency = 95.1m, 
             UnitsProduced = 512, 
             Downtime = 15 
         }

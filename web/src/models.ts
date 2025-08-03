@@ -11,7 +11,7 @@ export interface ProductionData {
   machineId: number;
   timestamp: string;
   // Intentional error: efficiency is a string instead of number
-  efficiency: string;
+  efficiency: number;
   unitsProduced: number;
   downtime: number; // minutes
 }
