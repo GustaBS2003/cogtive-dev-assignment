@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { fetchMachines, fetchMachineProductionData } from './api';
 import { Machine, ProductionData } from './models';
 import './MachineList.css';
+
+type SortField = 'name' | 'type' | 'status';
+type SortOrder = 'asc' | 'desc';
+type StatusFilter = 'all' | 'active' | 'inactive';
 
 const MachineList: React.FC = () => {
     const [machines, setMachines] = useState<Machine[]>([]);
@@ -11,6 +15,12 @@ const MachineList: React.FC = () => {
     const [loadingProduction, setLoadingProduction] = useState<boolean>(false);
     const [errorMachines, setErrorMachines] = useState<string | null>(null);
     const [errorProduction, setErrorProduction] = useState<string | null>(null);
+
+    // Enhancement state
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [sortField, setSortField] = useState<SortField>('name');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+    const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Fetch machines on mount
     const loadMachines = () => {
@@ -48,6 +58,33 @@ const MachineList: React.FC = () => {
             });
     };
 
+    // Filtering
+    const filteredMachines = machines.filter(machine => {
+        if (statusFilter === 'active' && !machine.isActive) return false;
+        if (statusFilter === 'inactive' && machine.isActive) return false;
+        if (searchTerm.trim() !== '') {
+            const term = searchTerm.trim().toLowerCase();
+            return (
+                machine.name.toLowerCase().includes(term) ||
+                machine.serialNumber.toLowerCase().includes(term)
+            );
+        }
+        return true;
+    });
+
+    // Sorting
+    const sortedMachines = [...filteredMachines].sort((a, b) => {
+        let compare = 0;
+        if (sortField === 'name') {
+            compare = a.name.localeCompare(b.name);
+        } else if (sortField === 'type') {
+            compare = a.type.localeCompare(b.type);
+        } else if (sortField === 'status') {
+            compare = (a.isActive === b.isActive) ? 0 : a.isActive ? -1 : 1;
+        }
+        return sortOrder === 'asc' ? compare : -compare;
+    });
+
     // Loading state for machines
     if (loadingMachines) {
         return (
@@ -71,26 +108,69 @@ const MachineList: React.FC = () => {
     return (
         <div className="machines-container">
             <h2>Industrial Machines</h2>
+            {/* --- Enhancements: Filter, Sort, Search --- */}
+            <div className="machine-controls">
+                <div>
+                    <label>Status:&nbsp;
+                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as StatusFilter)}>
+                            <option value="all">All</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </label>
+                </div>
+                <div>
+                    <label>Sort by:&nbsp;
+                        <select value={sortField} onChange={e => setSortField(e.target.value as SortField)}>
+                            <option value="name">Name</option>
+                            <option value="type">Type</option>
+                            <option value="status">Status</option>
+                        </select>
+                        <button
+                            className="sort-order-btn"
+                            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                            title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+                        >
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                        </button>
+                    </label>
+                </div>
+                <div>
+                    <input
+                        type="text"
+                        placeholder="Search by name or serial..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="machine-search"
+                    />
+                </div>
+            </div>
+            {/* --- End Enhancements --- */}
+
             <div className="machine-cards">
-                {machines.map((machine) => (
-                    <div className="machine-card" key={machine.id}>
-                        <div className="machine-header">
-                            <span className="machine-name">{machine.name}</span>
-                            <span className={`status-badge ${machine.isActive ? 'active' : 'inactive'}`}>
-                                {machine.isActive ? 'Active' : 'Inactive'}
-                            </span>
+                {sortedMachines.length === 0 ? (
+                    <div className="no-data-message">No machines found.</div>
+                ) : (
+                    sortedMachines.map((machine) => (
+                        <div className="machine-card" key={machine.id}>
+                            <div className="machine-header">
+                                <span className="machine-name">{machine.name}</span>
+                                <span className={`status-badge ${machine.isActive ? 'active' : 'inactive'}`}>
+                                    {machine.isActive ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div className="machine-details">
+                                <div><strong>Serial:</strong> {machine.serialNumber}</div>
+                                <div><strong>Type:</strong> {machine.type}</div>
+                            </div>
+                            <div className="machine-actions">
+                                <button onClick={() => handleMachineSelect(machine.id)}>
+                                    View Production Data
+                                </button>
+                            </div>
                         </div>
-                        <div className="machine-details">
-                            <div><strong>Serial:</strong> {machine.serialNumber}</div>
-                            <div><strong>Type:</strong> {machine.type}</div>
-                        </div>
-                        <div className="machine-actions">
-                            <button onClick={() => handleMachineSelect(machine.id)}>
-                                View Production Data
-                            </button>
-                        </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
 
             {selectedMachine && (
