@@ -18,7 +18,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebApp",
-        policy => policy.WithOrigins("http://localhost:3000")
+        policy => policy
+            .WithOrigins("http://localhost:3000", "http://web", "http://web:80")
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
