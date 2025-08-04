@@ -33,7 +33,7 @@ function generateProductionData(machineId) {
         machineId,
         timestamp: new Date().toISOString(),
         // Intentional: Efficiency is a string to match the backend's intentional error
-        efficiency: efficiency.toString(),
+        efficiency,
         unitsProduced,
         downtime
     };

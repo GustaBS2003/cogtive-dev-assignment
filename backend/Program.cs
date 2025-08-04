@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Cogtive.DevAssignment.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,9 +20,11 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebApp",
-        policy => policy.WithOrigins("http://localhost:3000")
+        policy => policy
+            .WithOrigins("http://localhost:3000", "http://web", "http://web:80")
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 // Configure DbContext with SQLite by default or PostgreSQL via env variable
@@ -36,9 +40,11 @@ else
         options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection")));
 }
 
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
-// Ensure database is created and seed initial data
+// Database initialization
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -46,7 +52,8 @@ using (var scope = app.Services.CreateScope())
 
     try 
     {
-        // Fix: Check if database exists but tables don't
+        logger.LogInformation($"Using database provider: {dbProvider}");
+        
         if (context.Database.CanConnect())
         {
             try
@@ -69,27 +76,25 @@ using (var scope = app.Services.CreateScope())
         {
             // Database doesn't exist, create it
             logger.LogInformation("Creating new database with initial schema...");
-            context.Database.EnsureCreated();
+            
+            // For PostgreSQL, it's better to use migrations
+            if (dbProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Database.Migrate();
+            }
+            else
+            {
+                context.Database.EnsureCreated();
+            }
+            
             InitSeedData(context);
             logger.LogInformation("New database created with seed data.");
         }
     }
     catch (Exception ex)
     {
-        // Handle any unexpected errors
-        logger.LogError(ex, "Database initialization failed. Recreating from scratch.");
-        try
-        {
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
-            InitSeedData(context);
-            logger.LogInformation("Database recovery successful.");
-        }
-        catch (Exception innerEx)
-        {
-            logger.LogCritical(innerEx, "Critical error: Could not recover database.");
-            throw; // Rethrow as this is a critical error
-        }
+        logger.LogError(ex, "Database initialization failed.");
+        throw;
     }
 }
 
@@ -139,14 +144,17 @@ app.MapGet("/api/machines/{id}/production-data", async (int id, AppDbContext con
 .Produces(StatusCodes.Status404NotFound);
 
 // Optional endpoint for seniors to implement IoT data reception
-app.MapPost("/api/production-data", async (ProductionData data, AppDbContext context) =>
+app.MapPost("/api/production-data", async (ProductionData data, AppDbContext context, IHubContext<ProductionHub> hubContext) =>
 {
     context.ProductionData.Add(data);
     await context.SaveChangesAsync();
+    await hubContext.Clients.All.SendAsync("ProductionDataAdded", data);
     return Results.Created($"/api/production-data/{data.Id}", data);
 })
 .WithName("AddProductionData")
 .Produces<ProductionData>(StatusCodes.Status201Created);
+
+app.MapHub<ProductionHub>("/hubs/production");
 
 app.Run();
 
@@ -185,21 +193,21 @@ void InitSeedData(AppDbContext context)
         new ProductionData { 
             MachineId = 1, 
             Timestamp = now.AddHours(-4), 
-            Efficiency = "92.7", // Intentional error: string instead of decimal
+            Efficiency = 92.7m, // Intentional error: string instead of decimal
             UnitsProduced = 427, 
             Downtime = 24 
         },
         new ProductionData { 
             MachineId = 2, 
             Timestamp = now.AddHours(-3), 
-            Efficiency = "88.3", 
+            Efficiency = 88.3m, 
             UnitsProduced = 195, 
             Downtime = 32 
         },
         new ProductionData { 
             MachineId = 1, 
             Timestamp = now.AddHours(-2), 
-            Efficiency = "95.1", 
+            Efficiency = 95.1m, 
             UnitsProduced = 512, 
             Downtime = 15 
         }

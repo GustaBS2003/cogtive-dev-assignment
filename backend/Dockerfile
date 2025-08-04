@@ -1,20 +1,14 @@
-FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["Cogtive.DevAssignment.Api.csproj", "./"]
+RUN dotnet restore
+COPY . .
+RUN dotnet publish -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
+COPY --from=build /app/publish .
 EXPOSE 80
 EXPOSE 443
-
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
-WORKDIR /src
-COPY ["Cogtive.DevAssignment.Api.csproj", "."]
-RUN dotnet restore "./Cogtive.DevAssignment.Api.csproj"
-COPY . .
-WORKDIR "/src/."
-RUN dotnet build "Cogtive.DevAssignment.Api.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "Cogtive.DevAssignment.Api.csproj" -c Release -o /app/publish
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
+ENV ASPNETCORE_URLS=http://+:80
 ENTRYPOINT ["dotnet", "Cogtive.DevAssignment.Api.dll"]

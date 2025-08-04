@@ -1,21 +1,44 @@
-namespace Cogtive.DevAssignment.Api.Models;
+using System;
+using System.ComponentModel.DataAnnotations;
 
-public class Machine
+namespace Cogtive.DevAssignment.Api.Models
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string SerialNumber { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
-    public bool IsActive { get; set; } = true;
-}
+    public class Machine
+    {
+        public int Id { get; set; }
 
-public class ProductionData
-{
-    public int Id { get; set; }
-    public int MachineId { get; set; }
-    public DateTime Timestamp { get; set; }
-    // Intentional error: Efficiency should be a decimal/double, not string
-    public string Efficiency { get; set; } = string.Empty;
-    public int UnitsProduced { get; set; }
-    public int Downtime { get; set; } // In minutes
+        [Required]
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(100)]
+        public string SerialNumber { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        public string Type { get; set; } = string.Empty;
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class ProductionData
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public int MachineId { get; set; }
+
+        [Required]
+        public DateTime Timestamp { get; set; }
+
+        [Range(0, 100)]
+        public decimal Efficiency { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public int UnitsProduced { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public int Downtime { get; set; } // In minutes
+    }
 }
