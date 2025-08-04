@@ -18,11 +18,17 @@ namespace Cogtive.App
             InitializeComponent();
             _apiService = new ApiService();
             _localStorageService = new LocalStorageService();
-
-            InitializeUi();
         }
 
-        private async void InitializeUi()
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+
+            await InitializeUi();
+        }
+
+
+        private async Task InitializeUi()
         {
             await LoadMachinesAsync();
             await UpdateSyncStatusAsync();
@@ -42,13 +48,12 @@ namespace Cogtive.App
                 }
                 else
                 {
-                    // Fallback para modo offline
                     _machines = new ObservableCollection<Machine>
                     {
                         new Machine { Id = 1, Name = "CNC Machine Alpha (Offline Cache)", SerialNumber = "CNC-2023-001", Type = "CNC", IsActive = true },
                         new Machine { Id = 2, Name = "Injection Molder Beta (Offline Cache)", SerialNumber = "INJ-2022-042", Type = "Injection", IsActive = true },
                     };
-                    await DisplayAlert("Offline Mode", "You are currently working offline. Data will be synchronized when a connection is available.", "OK");
+                    ShowError("You are currently working offline. Data will be synchronized when a connection is available.");
                 }
 
                 MachinePicker.ItemsSource = _machines.Select(m => m.Name).ToList();
