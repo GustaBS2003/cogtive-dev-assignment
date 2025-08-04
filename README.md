@@ -248,7 +248,217 @@ Dashboard de chão de fábrica para entrada de dados de produção, migrado do X
 
 ---
 
-## 5. Additional Recommendations
+## 5. Cogtive Technical Challenge Implementation
+
+Esta seção documenta a implementação do desafio técnico da Cogtive, incluindo todos os pontos abordados e soluções implementadas.
+
+### 5.1. Challenge Completed Tasks
+
+#### ✅ Junior Level - Completed
+- **Environment Setup**: Ambiente completo funcionando com backend API + frontend React
+- **Intentional Error**: Identificado e corrigido erro na propriedade `Efficiency` (string → decimal)
+- **Basic Improvements**: Validações implementadas, UI melhorada, loading indicators adicionados
+
+#### ✅ Mid-Level - Completed  
+- **Data Model Fix**: Propriedade `Efficiency` corrigida com type conversion completa
+- **Error Handling**: Error handling robusto implementado no React frontend
+- **Frontend Enhancements**: Filtros, ordenação e busca implementados
+- **Automated Testing**: Testes unitários adicionados para backend e frontend
+
+#### ✅ Senior Level - Completed
+- **Database Integration**: PostgreSQL integrado com migrations adequadas
+- **Containerization**: Docker Compose configurado para os componentes
+- **Mobile App Enhancement**: Migração Xamarin.Forms → .NET MAUI documentada
+- **Architecture Documentation**: Documento completo com propostas arquiteturais
+
+### 5.2. Technical Implementation Details
+
+#### Data Model Corrections
+```csharp
+// ANTES (Problema identificado)
+public class ProductionData 
+{
+    public string Efficiency { get; set; } // ❌ String incorreto
+}
+
+// DEPOIS (Corrigido)
+public class ProductionData 
+{
+    [Range(0, 100)]
+    public decimal Efficiency { get; set; } // ✅ Decimal com validação
+}
+```
+
+#### API Endpoints Implemented
+| Endpoint | Método | Descrição | Status |
+|----------|---------|-----------|---------|
+| `/api/machines` | GET | Lista de máquinas industriais | ✅ |
+| `/api/production-data` | GET | Métricas de produção | ✅ |
+| `/api/machines/{id}` | GET | Máquina específica | ✅ |
+| `/api/machines/{id}/production-data` | GET | Dados de produção por máquina | ✅ |
+| `/api/production-data` | POST | Novos dados de produção | ✅ |
+
+#### Frontend Features Implemented
+- **Filtering**: Máquinas por status (active/inactive)
+- **Sorting**: Por nome, tipo e status
+- **Search**: Busca por nome ou serial number
+- **Error Handling**: Estados de erro e loading
+- **Real-time Updates**: Atualizações via SignalR (se IoT implementado)
+
+---
+
+## 6. Complete Setup Guide
+
+### 6.1. Prerequisites
+
+| Tecnologia | Versão Mínima | Download |
+|------------|---------------|----------|
+| **.NET SDK** | 6.0 ou superior | [Download](https://dotnet.microsoft.com/download) |
+| **Node.js** | 16 ou superior | [Download](https://nodejs.org/) |
+| **Visual Studio** | 2022 ou VS Code | [Download](https://visualstudio.microsoft.com/) |
+| **Docker** | Latest (opcional) | [Download](https://www.docker.com/) |
+| **PostgreSQL** | 12+ (opcional) | [Download](https://www.postgresql.org/) |
+
+### 6.2. Quick Start (Recommended)
+
+#### Using Docker (Fastest Method)
+```bash
+# Clone o repositório
+git clone <repository-url>
+cd COGTIVE
+
+# Execute o script de inicialização
+# Windows:
+start.bat
+
+# Linux/macOS:
+chmod +x start.sh && ./start.sh
+```
+
+**Services will be available at:**
+- **Web UI**: http://localhost:3000
+- **API**: http://localhost:5211/api
+- **Database**: PostgreSQL interno no Docker
+
+### 6.3. Manual Setup (Step by Step)
+
+#### Step 1: Backend API Setup
+```bash
+cd backend
+dotnet restore
+dotnet run
+```
+**Expected Output:** API running at https://localhost:5211
+
+#### Step 2: Frontend Web Setup
+```bash
+cd web
+npm install
+npm start
+```
+**Expected Output:** React app running at http://localhost:3000
+
+#### Step 3: Mobile App Setup (Optional)
+```bash
+cd mobile
+dotnet restore
+# Abrir o .csproj no Visual Studio
+# Para Android: usar 10.0.2.2 para conectar à API
+# Para iOS: usar localhost ou 127.0.0.1
+```
+
+#### Step 4: Database Configuration
+
+**SQLite (Default):**
+```bash
+# Automático - banco criado na primeira execução
+dotnet ef database update
+```
+
+**PostgreSQL (Advanced):**
+```powershell
+# Configurar variável de ambiente
+$env:DATABASE_PROVIDER="Postgres"
+
+# Executar migrations
+dotnet ef database update
+```
+
+### 6.4. Verification Checklist
+
+#### ✅ Backend Verification
+```bash
+# Testar endpoints
+curl https://localhost:5211/api/machines
+curl https://localhost:5211/api/production-data
+```
+
+#### ✅ Frontend Verification
+- [x] Página carrega em http://localhost:3000
+- [x] Lista de máquinas é exibida
+- [x] Filtros funcionam (active/inactive)
+- [x] Busca funciona
+- [x] Loading states aparecem
+
+#### ✅ Database Verification
+```sql
+-- PostgreSQL
+SELECT * FROM Machines;
+SELECT * FROM ProductionData;
+
+-- SQLite
+.tables
+SELECT * FROM Machines;
+```
+
+### 6.5. Environment Reset (If Needed)
+
+**Windows:**
+```batch
+# Parar todos os serviços
+docker-compose down
+
+# Limpar volumes (cuidado - apaga dados)
+docker-compose down -v
+
+# Rebuild completo
+docker-compose up -d --build
+```
+
+**Linux/macOS:**
+```bash
+#!/bin/bash
+docker-compose down -v
+docker-compose up -d --build
+```
+
+### 6.6. Common Issues & Solutions
+
+| Problema | Causa | Solução |
+|----------|-------|---------|
+| **Database Errors** | Tabelas não existem | `dotnet ef database update` |
+| **CORS Issues** | Frontend não conecta API | Verificar Program.cs CORS config |
+| **Port Conflicts** | Porta já em uso | Alterar portas no launchSettings.json |
+| **Docker Issues** | Containers não sobem | `docker-compose logs` para debug |
+| **TypeScript Errors** | Tipos React ausentes | `npm install --save-dev @types/react` |
+
+### 6.7. Testing Commands
+
+**Backend Tests:**
+```bash
+cd backend
+dotnet test
+```
+
+**Frontend Tests:**
+```bash
+cd web
+npm test
+```
+
+---
+
+## 7. Additional Recommendations
 
 - **CQRS**: Para separação clara de read/write e escalabilidade
 - **Event Sourcing**: Para auditoria completa (futuro)
@@ -257,7 +467,7 @@ Dashboard de chão de fábrica para entrada de dados de produção, migrado do X
 
 ---
 
-## 6. References
+## 8. References
 
 - [.NET MAUI Documentation](https://learn.microsoft.com/dotnet/maui/)
 - [MAUI Migration Guide](https://learn.microsoft.com/dotnet/maui/migration/)
