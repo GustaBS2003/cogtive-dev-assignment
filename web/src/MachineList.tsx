@@ -2,6 +2,11 @@
 import { fetchMachines, fetchMachineProductionData } from './api';
 import { Machine, ProductionData } from './models';
 import './MachineList.css';
+import * as signalR from '@microsoft/signalr';
+import { Line } from 'react-chartjs-2';
+import { Chart, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend } from 'chart.js';
+
+Chart.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend);
 
 type SortField = 'name' | 'type' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -15,6 +20,7 @@ const MachineList: React.FC = () => {
     const [loadingProduction, setLoadingProduction] = useState<boolean>(false);
     const [errorMachines, setErrorMachines] = useState<string | null>(null);
     const [errorProduction, setErrorProduction] = useState<string | null>(null);
+    const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
 
     // Enhancement state
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -40,6 +46,31 @@ const MachineList: React.FC = () => {
     useEffect(() => {
         loadMachines();
     }, []);
+
+    // SignalR: conectar ao hub e ouvir novos dados
+    useEffect(() => {
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl('http://localhost:5211/hubs/production')
+            .withAutomaticReconnect()
+            .build();
+
+        let stopped = false;
+
+        conn.start().then(() => {
+            setConnection(conn);
+            conn.on('ProductionDataAdded', (data: ProductionData) => {
+                if (selectedMachine && data.machineId === selectedMachine) {
+                    setProductionData(prev => [data, ...prev]);
+                }
+            });
+        });
+
+        return () => {
+            stopped = true;
+            conn.stop().catch(() => {});
+        };
+        // eslint-disable-next-line
+    }, [selectedMachine]);
 
     // Fetch production data for selected machine
     const handleMachineSelect = (machineId: number) => {
@@ -189,26 +220,63 @@ const MachineList: React.FC = () => {
                             <button onClick={() => handleMachineSelect(selectedMachine)}>Retry</button>
                         </div>
                     ) : productionData.length > 0 ? (
-                        <table className="production-table" border={1} cellPadding={5}>
-                            <thead>
-                                <tr>
-                                    <th>Timestamp</th>
-                                    <th>Efficiency (%)</th>
-                                    <th>Units Produced</th>
-                                    <th>Downtime (min)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {productionData.map((data) => (
-                                    <tr key={data.id}>
-                                        <td>{new Date(data.timestamp).toLocaleString()}</td>
-                                        <td>{data.efficiency}</td>
-                                        <td>{data.unitsProduced}</td>
-                                        <td>{data.downtime}</td>
+                        <>
+                            <table className="production-table" border={1} cellPadding={5}>
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Efficiency (%)</th>
+                                        <th>Units Produced</th>
+                                        <th>Downtime (min)</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {productionData.map((data) => (
+                                        <tr key={data.id}>
+                                            <td>{new Date(data.timestamp).toLocaleString()}</td>
+                                            <td>{data.efficiency}</td>
+                                            <td>{data.unitsProduced}</td>
+                                            <td>{data.downtime}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {productionData.length > 0 && (
+                                <div style={{ maxWidth: 700, margin: '0 auto 2rem auto' }}>
+                                    <Line
+                                        data={{
+                                            labels: productionData
+                                                .slice()
+                                                .reverse()
+                                                .map(d => new Date(d.timestamp).toLocaleTimeString()),
+                                            datasets: [
+                                                {
+                                                    label: 'Efficiency (%)',
+                                                    data: productionData
+                                                        .slice()
+                                                        .reverse()
+                                                        .map(d => Number(d.efficiency)),
+                                                    fill: false,
+                                                    borderColor: 'rgb(75, 192, 192)',
+                                                    tension: 0.2,
+                                                },
+                                            ],
+                                        }}
+                                        options={{
+                                            responsive: true,
+                                            plugins: {
+                                                legend: { display: true },
+                                                tooltip: { enabled: true },
+                                            },
+                                            scales: {
+                                                y: { min: 0, max: 100, title: { display: true, text: 'Efficiency (%)' } },
+                                                x: { title: { display: true, text: 'Time' } },
+                                            },
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div className="no-data-message">
                             No production data available for this machine.

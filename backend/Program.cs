@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Cogtive.DevAssignment.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +23,8 @@ builder.Services.AddCors(options =>
         policy => policy
             .WithOrigins("http://localhost:3000", "http://web", "http://web:80")
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 // Configure DbContext with SQLite by default or PostgreSQL via env variable
@@ -36,6 +39,8 @@ else
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection")));
 }
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -139,14 +144,17 @@ app.MapGet("/api/machines/{id}/production-data", async (int id, AppDbContext con
 .Produces(StatusCodes.Status404NotFound);
 
 // Optional endpoint for seniors to implement IoT data reception
-app.MapPost("/api/production-data", async (ProductionData data, AppDbContext context) =>
+app.MapPost("/api/production-data", async (ProductionData data, AppDbContext context, IHubContext<ProductionHub> hubContext) =>
 {
     context.ProductionData.Add(data);
     await context.SaveChangesAsync();
+    await hubContext.Clients.All.SendAsync("ProductionDataAdded", data);
     return Results.Created($"/api/production-data/{data.Id}", data);
 })
 .WithName("AddProductionData")
 .Produces<ProductionData>(StatusCodes.Status201Created);
+
+app.MapHub<ProductionHub>("/hubs/production");
 
 app.Run();
 
